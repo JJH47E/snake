@@ -100,9 +100,12 @@ int main(void)
     bool showPostHint = false;
     
     int frameCounter = 0;
-    int difficulty = 0;
     int multi = 0;
     int frames = 20;
+    
+    int highScore = LoadStorageValue(0);
+    int theme = LoadStorageValue(1);
+    int difficulty = 1;
     
     char debug[50];
     sprintf(debug, "");
@@ -113,12 +116,11 @@ int main(void)
     int listCounter = 0;
     int difficultyCounter;
     
-    int theme = 0;
     Color bg;
     Color fg;
     
     char diffs[3][15] = {"EASY", "HARD", "IMPOSSIBLE"};
-    char themeNames[3][15] = {"GAMEBOY", "MATRIX", "OLED"};
+    char themeNames[3][15] = {"OLED", "MATRIX", "GAMEBOY"};
 
     InitWindow(screenWidth, screenHeight, "Snake");
     
@@ -126,6 +128,13 @@ int main(void)
     Texture2D logo_matrix = LoadTexture("resources/logo_matrix.png");
     Texture2D logo_oled = LoadTexture("resources/logo_oled.png");
     Texture2D logo;
+    
+    InitAudioDevice();
+    SetMasterVolume(1.0f);
+    
+    Sound eatFood = LoadSound("resources/food.wav");
+    Sound selectSound = LoadSound("resources/select.wav");
+    Sound deathSound = LoadSound("resources/death.wav");
     
     Font font = LoadFont("resources/font.otf");
 
@@ -138,10 +147,10 @@ int main(void)
         // Update
         //----------------------------------------------------------------------------------
         if(theme == 0){
-            //gb theme
-            bg = (Color){202, 220, 160, 255};
-            fg = (Color){138, 172, 15, 255};
-            logo = logo_gb;
+            //theme oled
+            bg = (Color){0, 0, 0, 255};
+            fg = (Color){255, 255, 255, 255};
+            logo = logo_oled;
         }
         else if(theme == 1){
             //matrix theme
@@ -150,13 +159,14 @@ int main(void)
             logo = logo_matrix;
         }
         else {
-            //theme oled
-            bg = (Color){0, 0, 0, 255};
-            fg = (Color){255, 255, 255, 255};
-            logo = logo_oled;
+            theme = 2;
+            bg = (Color){202, 220, 160, 255};
+            fg = (Color){138, 172, 15, 255};
+            logo = logo_gb;
+            //theme gb
         }
         if(difficulty == 0){
-            frames = 20;
+            frames = 15;
         }
         else if(difficulty == 1){
             frames = 10;
@@ -273,6 +283,7 @@ int main(void)
                 }
                 if(newHead.x == food.x & newHead.y == food.y){
                    snakeLength++;
+                   PlaySound(eatFood);
                    newFood = true;
                    snake[snakeLength - 1] = food;
                 }
@@ -281,6 +292,7 @@ int main(void)
                 shiftSnake(newHead, snakeLength);
             }
             if(endGame == true){
+                PlaySound(deathSound);
                 inGame = false;
                 PostGame = true;
                 frameCounter = 0;
@@ -289,6 +301,7 @@ int main(void)
         }
         else if(inMenu == true){
             if (IsKeyPressed(KEY_SPACE)){
+                PlaySound(selectSound);
                 if(listCounter == 0){
                     inMenu = false;
                     inGame = true;
@@ -332,24 +345,29 @@ int main(void)
                 }
             }
             else if(IsKeyPressed(KEY_UP)){
+                PlaySound(selectSound);
                 listCounter--;
                 listCounter = abs(listCounter % 2);
             }
             else if(IsKeyPressed(KEY_DOWN)){
+                PlaySound(selectSound);
                 listCounter++;
                 listCounter = abs(listCounter % 2);
             }
         }
         else if(inSettings == true){
             if(IsKeyPressed(KEY_DOWN)){
+                PlaySound(selectSound);
                 listCounter++;
                 listCounter = abs(listCounter % 3);
             }
             else if(IsKeyPressed(KEY_UP)){
+                PlaySound(selectSound);
                 listCounter--;
                 listCounter = abs(listCounter % 3);
             }
             else if(IsKeyPressed(KEY_RIGHT)){
+                PlaySound(selectSound);
                 if(listCounter == 0){
                     difficulty++;
                     difficulty = abs(difficulty % 3);
@@ -357,9 +375,11 @@ int main(void)
                 else if(listCounter == 1){
                     theme++;
                     theme = abs(theme % 3);
+                    SaveStorageValue(1, theme);
                 }
             }
             else if(IsKeyPressed(KEY_LEFT)){
+                PlaySound(selectSound);
                 if(listCounter == 0){
                     difficulty--;
                     difficulty = abs(difficulty % 3);
@@ -367,9 +387,11 @@ int main(void)
                 else if(listCounter == 1){
                     theme--;
                     theme = abs(theme % 3);
+                    SaveStorageValue(1, theme);
                 }
             }
             else if(IsKeyPressed(KEY_SPACE)){
+                PlaySound(selectSound);
                 if(listCounter == 2){
                     inSettings = false;
                     inMenu = true;
@@ -379,6 +401,11 @@ int main(void)
         }
         else if(PostGame == true){
             if(IsKeyPressed(KEY_SPACE) && showPostHint){
+                PlaySound(selectSound);
+                if((snakeLength - 4) * multi > LoadStorageValue(0)){
+                    highScore = (snakeLength - 4) * multi;
+                    SaveStorageValue(0, (snakeLength - 4) * multi);
+                }
                 PostGame = false;
                 inMenu = true;
             }
@@ -392,10 +419,10 @@ int main(void)
             ClearBackground(bg);
             if(inGame == true){
                 if(snakeLength - 4 < 10){
-                    DrawText(FormatText("00%i0", snakeLength - 4), 20, 10, 30, fg);
+                    DrawTextEx(font, FormatText("00%i0", snakeLength - 4), (Vector2){20, 10}, 30, (float)0, fg);
                 }
                 else{
-                    DrawText(FormatText("0%i0", snakeLength - 4), 20, 10, 30, fg);
+                    DrawTextEx(font, FormatText("0%i0", snakeLength - 4), (Vector2){20, 10}, 30, (float)0, fg);
                 }
                 drawFoodBit(food, bg, fg);
                 for(int i = snakeLength - 1; i >= 0; i--){
@@ -405,53 +432,57 @@ int main(void)
             }
             else if(inMenu == true){
                 DrawTexture(logo, screenWidth/2 - 231, 75 - 30, WHITE);
+                DrawTextEx(font, FormatText("HIGH SCORE: %i0", highScore), (Vector2){screenWidth/2 - MeasureText("HIGH SCORE: 000", 32)/2, screenHeight - 75}, 32, (float)0, fg);
                 if(listCounter == 0){
-                    DrawTextEx(font, ">PLAY<", (Vector2){screenWidth/2 - MeasureText(">PLAY<", 48)/2, 144 + 150}, 48, (float)1, fg);
-                    DrawTextEx(font, "SETTINGS", (Vector2){screenWidth/2 - MeasureText("SETTINGS", 48)/2, 225 + 150}, 48, (float)1, fg);
+                    DrawTextEx(font, "-PLAY-", (Vector2){screenWidth/2 - MeasureText("-PLAY-", 48)/2, 144 + 150}, 48, (float)0, fg);
+                    DrawTextEx(font, "SETTINGS", (Vector2){screenWidth/2 - MeasureText("SETTINGS", 48)/2, 225 + 150}, 48, (float)0, fg);
                 }
                 else{
-                    DrawTextEx(font, ">SETTINGS<", (Vector2){screenWidth/2 - MeasureText(">SETTINGS<", 48)/2, 225 + 150}, 48, (float)1, fg);
-                    DrawTextEx(font, "PLAY", (Vector2){screenWidth/2 - MeasureText("PLAY", 48)/2, 144 + 150}, 48, (float)1, fg);
+                    DrawTextEx(font, "-SETTINGS-", (Vector2){screenWidth/2 - MeasureText("-SETTINGS-", 48)/2, 225 + 150}, 48, (float)0, fg);
+                    DrawTextEx(font, "PLAY", (Vector2){screenWidth/2 - MeasureText("PLAY", 48)/2, 144 + 150}, 48, (float)0, fg);
                 }
             }
             else if(PostGame == true){
                 if(frameCounter > 30 || showScore == true){
-                    showScore == true;
+                    showScore = true;
                     if(snakeLength - 4 < 10){
-                        DrawText(FormatText("Score: 00%i0", snakeLength - 4), screenWidth/2 - MeasureText(FormatText("Score: 00%i0", snakeLength - 4), 30)/2, 10, 30, fg);
+                        DrawTextEx(font, FormatText("SCORE: 00%i0", snakeLength - 4), (Vector2){screenWidth/2 - MeasureText(FormatText("SCORE: 00%i0", snakeLength - 4), 30)/2, 150}, 30, (float)0, fg);
                     }
                     else{
-                        DrawText(FormatText("Score: 0%i0", snakeLength - 4), screenWidth/2 - MeasureText(FormatText("Score: 0%i0", snakeLength - 4), 30)/2, 10, 30, fg);
+                        DrawTextEx(font, FormatText("SCORE: 0%i0", snakeLength - 4), (Vector2){screenWidth/2 - MeasureText(FormatText("SCORE: 0%i0", snakeLength - 4), 30)/2, 150}, 30, (float)0, fg);
                     }
                 }
                 if(frameCounter > 60 || showMulti == true){
                     showMulti = true;
-                    if(difficulty == 10){
-                        DrawText(FormatText("Difficulty Multiplier: x%i", (int)2), screenWidth/2 - MeasureText(FormatText("Difficulty Multiplier: x%i", (int)2), 30)/2, 50, 30, fg);
+                    if(difficulty == 1){
+                        DrawTextEx(font, FormatText("DIFFICULTY MULTIPLIER: x%i", (int)2), (Vector2){screenWidth/2 - MeasureText(FormatText("DIFFICULTY MULTIPLIER: x%i", (int)2), 30)/2, 190}, 30, (float)0, fg);
                         multi = 2;
                     }
-                    else if(difficulty == 20){
-                        DrawText(FormatText("Difficulty Multiplier: x%i", (int)1), screenWidth/2 - MeasureText(FormatText("Difficulty Multiplier: x%i", (int)1), 30)/2, 50, 30, fg);
+                    else if(difficulty == 0){
+                        DrawTextEx(font, FormatText("DIFFICULTY MULTIPLIER: x%i", (int)1), (Vector2){screenWidth/2 - MeasureText(FormatText("DIFFICULTY MULTIPLIER: x%i", (int)1), 30)/2, 190}, 30, (float)0, fg);
                         multi = 1;
                     }
                     else {
-                        DrawText(FormatText("Difficulty Multiplier: x%i", (int)3), screenWidth/2 - MeasureText(FormatText("Difficulty Multiplier: x%i", (int)3), 30)/2, 50, 30, fg);
+                        DrawTextEx(font, FormatText("DIFFICULTY MULTIPLIER: x%i", (int)3), (Vector2){screenWidth/2 - MeasureText(FormatText("DIFFICULTY MULTIPLIER: x%i", (int)3), 30)/2, 190}, 30, (float)0, fg);
                         multi = 3;
                     }
                 }
                 if(frameCounter > 120 || showFinalScore == true){
                     showFinalScore = true;
                     if((snakeLength - 4) * multi < 10){
-                        DrawText(FormatText("Final Score: 00%i0", (snakeLength - 4) * multi), screenWidth/2 - MeasureText(FormatText("Final Score: 00%i0", (snakeLength - 4) * multi), 30)/2, 90, 30, fg);
+                        DrawTextEx(font, FormatText("FINAL SCORE: 00%i0", (snakeLength - 4) * multi), (Vector2){screenWidth/2 - MeasureText(FormatText("FINAL SCORE: 00%i0", (snakeLength - 4) * multi), 30)/2, 240}, 30, (float)0, fg);
                     }
                     else{
-                        DrawText(FormatText("Final Score: 0%i0", (snakeLength - 4) * multi), screenWidth/2 - MeasureText(FormatText("Final Score: 0%i0", (snakeLength - 4) * multi), 30)/2, 90, 30, fg);
+                        DrawTextEx(font, FormatText("FINAL SCORE: 0%i0", (snakeLength - 4) * multi), (Vector2){screenWidth/2 - MeasureText(FormatText("FINAL SCORE: 0%i0", (snakeLength - 4) * multi), 30)/2, 240}, 30, (float)0, fg);
+                    }
+                    if((snakeLength - 4) * multi > highScore){
+                        DrawTextEx(font, "NEW HIGH SCORE", (Vector2){screenWidth/2 - MeasureText("NEW HIGH SCORE", 30)/2, screenHeight - 150}, 30, (float)0, fg);
                     }
                 }
                 if(frameCounter > 180 || showPostHint == true){
                     frameCounter = 0;
                     showPostHint = true;
-                    DrawTextEx(font, "PRESS X TO RETURN TO MENU", (Vector2){screenWidth/2 - MeasureText("PRESS X TO RETURN TO MENU", 36)/2, screenHeight - 75}, 36, (float)1, fg);
+                    DrawTextEx(font, "PRESS SPACE TO RETURN TO MENU", (Vector2){screenWidth/2 - MeasureText("PRESS SPACE TO RETURN TO MENU", 36)/2, screenHeight - 75}, 36, (float)1, fg);
                 }
             }
             else if(inSettings == true){
@@ -469,7 +500,7 @@ int main(void)
                 else{
                     DrawTextEx(font, FormatText("DIFFICULTY: %s", diffs[difficulty]), (Vector2){screenWidth/2 - MeasureText(FormatText("DIFFICULTY: %s", diffs[difficulty]), 36)/2, screenHeight/2 - 75}, 36, (float)1, fg);
                     DrawTextEx(font, FormatText("THEME: %s", themeNames[theme]), (Vector2){screenWidth/2 - MeasureText(FormatText("THEME: %s", themeNames[theme]), 36)/2, screenHeight/2 + 25}, 36, (float)1, fg);
-                    DrawTextEx(font, ">DONE<", (Vector2){screenWidth/2 - MeasureText(">DONE<", 36)/2, screenHeight - 75}, 36, (float)1, fg);
+                    DrawTextEx(font, "-DONE-", (Vector2){screenWidth/2 - MeasureText("-DONE-", 36)/2, screenHeight - 75}, 36, (float)1, fg);
                 }
             }
 
@@ -479,6 +510,15 @@ int main(void)
 
     // De-Initialization
     //--------------------------------------------------------------------------------------
+    UnloadTexture(logo_gb);
+    UnloadTexture(logo_oled);
+    UnloadTexture(logo_matrix);
+    UnloadTexture(logo);
+    UnloadFont(font);
+    UnloadSound(eatFood);
+    UnloadSound(selectSound);
+    UnloadSound(deathSound);
+    CloseAudioDevice();
     CloseWindow();        // Close window and OpenGL context
     //--------------------------------------------------------------------------------------
 
