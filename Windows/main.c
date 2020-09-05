@@ -406,6 +406,11 @@ int main(void)
                     highScore = (snakeLength - 4) * multi;
                     SaveStorageValue(0, (snakeLength - 4) * multi);
                 }
+                showScore = false;
+                showMulti = false;
+                showFinalScore = false;
+                showPostHint = false;
+                frameCounter = 0;
                 PostGame = false;
                 inMenu = true;
             }
