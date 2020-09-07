@@ -1,0 +1,1 @@
+psp2psarc create --level 2 --compress-manifest -o gamedata.psarc -i tex snd fnt

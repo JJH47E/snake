@@ -1,0 +1,1 @@
+psp2gxt.exe -i logo_gb.dds logo_matrix.dds logo_oled.dds -o texture.gxt
